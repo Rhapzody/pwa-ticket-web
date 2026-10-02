@@ -97,7 +97,7 @@ export default function TicketApp() {
   const [quantity, setQuantity] = useState(1);
   const [working, setWorking] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
-  const [loginSent, setLoginSent] = useState(false);
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [cachedTicketDetail, setCachedTicketDetail] = useState<CachedTicket | null>(null);
   const [storageUse, setStorageUse] = useState<string>("กำลังตรวจสอบ…");
@@ -247,6 +247,7 @@ export default function TicketApp() {
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (working) return;
     setLoginError("");
     if (!isSupabaseConfigured) {
       setLoginError("กรุณาดำเนินการต่อในฐานะผู้เยี่ยมชม");
@@ -256,19 +257,48 @@ export default function TicketApp() {
       setLoginError("กรุณากรอกอีเมลให้ถูกต้อง");
       return;
     }
+    if (!online) {
+      setLoginError("กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่อเข้าสู่ระบบ");
+      return;
+    }
 
     setWorking(true);
     try {
       const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail.trim(),
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        password: loginPassword,
       });
-      if (error) throw error;
-      setLoginSent(true);
+      if (error) {
+        setLoginError(error.code === "email_not_confirmed"
+          ? "บัญชีนี้ยังไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลการทดสอบเพื่อยืนยันบัญชี"
+          : error.status === 429
+            ? "เข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่แล้วลองอีกครั้ง"
+            : "เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบอีเมลและรหัสผ่านของบัญชีทดสอบ");
+        return;
+      }
+      const user = data.user;
+      setLoginPassword("");
+      window.localStorage.removeItem(DEMO_SESSION_KEY);
+      window.localStorage.setItem(LAST_USER_KEY, user.id);
+      setProfile(null);
+      setOrders([]);
+      setTickets([]);
+      setCachedTicketDetail(null);
+      const db = getDatabase();
+      const cachedProfile = await db.profiles.get(user.id);
+      if (!cachedProfile) await db.profiles.put({
+        id: user.id,
+        email: user.email ?? "",
+        displayName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split("@")[0] ?? "ผู้ถือบัตร",
+        syncedAt: "",
+      });
+      const result = await runSync();
+      navigate("/my-tickets");
+      if (result !== "synced") setNotice("เข้าสู่ระบบแล้ว แต่ยังซิงก์ตั๋วไม่สำเร็จ กรุณาลองอัปเดตอีกครั้ง");
     } catch (error) {
-      console.error("Unable to send the sign-in link.", error);
-      setLoginError("ส่งลิงก์เข้าสู่ระบบไม่สำเร็จ ลองอีกครั้งได้เลย");
+      console.error("Unable to complete password sign-in.", error);
+      setLoginError("เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง");
     } finally {
       setWorking(false);
     }
@@ -502,29 +532,22 @@ export default function TicketApp() {
         {route === "login" && (
           <section className="login-layout">
             <div className="login-card panel">
-              {loginSent ? (
-                <div className="login-success">
-                  <span className="success-mark"><Icon name="check" size={23} /></span>
-                  <p className="eyebrow">เช็กอีเมลของคุณ</p>
-                  <h2>ส่งลิงก์เข้าสู่ระบบแล้ว</h2>
-                  <p>เปิดลิงก์ในอีเมลเพื่อเข้าสู่ระบบและดูตั๋วของคุณ</p>
-                  <button className="button button-primary" onClick={() => navigate("/my-tickets")}>กลับไปดูตั๋วของฉัน <Icon name="arrow" size={16} /></button>
-                </div>
-              ) : (
                 <>
-                  <p className="eyebrow">{isSupabaseConfigured ? "เข้าสู่ระบบด้วยลิงก์จากอีเมล" : "เริ่มต้นใช้งาน"}</p>
-                  <h2>{isSupabaseConfigured ? "ใช้อีเมลของคุณ" : "ยินดีต้อนรับสู่PWA Ticket"}</h2>
-                  <p className="muted-copy">{isSupabaseConfigured ? "เราจะส่งลิงก์เข้าสู่ระบบให้ทางอีเมล ไม่ต้องตั้งรหัสผ่าน" : "เลือกงานที่คุณชอบ แล้วดำเนินการต่อในฐานะผู้เยี่ยมชม"}</p>
+                  <p className="eyebrow">{isSupabaseConfigured ? "เข้าสู่ระบบด้วยอีเมลและรหัสผ่าน" : "เริ่มต้นใช้งาน"}</p>
+                  <h2>{isSupabaseConfigured ? "เข้าสู่ระบบ" : "ยินดีต้อนรับสู่PWA Ticket"}</h2>
+                  <p className="muted-copy">{isSupabaseConfigured ? "ใช้บัญชีทดสอบที่ได้รับจากผู้ดูแล เข้าสู่ระบบได้ทันทีโดยไม่ต้องรอลิงก์ทางอีเมล" : "เลือกงานที่คุณชอบ แล้วดำเนินการต่อในฐานะผู้เยี่ยมชม"}</p>
                   {isSupabaseConfigured && <form className="login-form" onSubmit={(event) => void handleLoginSubmit(event)}>
                     <label htmlFor="email">อีเมล</label>
-                    <input id="email" type="email" autoComplete="email" placeholder="you@example.com" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} required />
+                    <input id="email" name="email" type="email" autoComplete="username" placeholder="you@example.com" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} required />
+                    <label htmlFor="password">รหัสผ่าน</label>
+                    <input id="password" name="password" type="password" autoComplete="current-password" placeholder="รหัสผ่านบัญชีทดสอบ" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required />
                     {loginError && <p className="form-error" role="alert">{loginError}</p>}
-                    <button className="button button-primary button-wide" type="submit" disabled={working || !online}>{working ? "กำลังส่งลิงก์…" : "ส่งลิงก์เข้าสู่ระบบ"}<Icon name="arrow" size={16} /></button>
+                    {!online && <p className="muted-copy">กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่อเข้าสู่ระบบ</p>}
+                    <button className="button button-primary button-wide" type="submit" disabled={working || !online}>{working ? "กำลังเข้าสู่ระบบ…" : "เข้าสู่ระบบ"}<Icon name="arrow" size={16} /></button>
                   </form>}
                   {isSupabaseConfigured && <div className="divider"><span>หรือดำเนินการต่อในฐานะผู้เยี่ยมชม</span></div>}
                   <button className={`button ${isSupabaseConfigured ? "button-secondary" : "button-primary demo-start"} button-wide`} onClick={() => void handleStartDemo()}><Icon name="ticket" size={17} /> ดำเนินการต่อในฐานะผู้เยี่ยมชม</button>
                 </>
-              )}
             </div>
             <aside className="login-aside">
               <span className="aside-label">ตั๋วพร้อมในกระเป๋าคุณ</span>
