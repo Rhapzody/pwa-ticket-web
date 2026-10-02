@@ -296,7 +296,7 @@ export default function TicketApp() {
         syncedAt: "",
       });
       const result = await runSync();
-      navigate("/my-tickets");
+      navigate("/");
       if (result !== "synced") setNotice("เข้าสู่ระบบแล้ว แต่ยังซิงก์ตั๋วไม่สำเร็จ กรุณาลองอัปเดตอีกครั้ง");
     } catch (error) {
       console.error("Unable to complete password sign-in.", error);
