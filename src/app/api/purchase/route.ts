@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { FEATURED_EVENT } from "@/lib/constants";
+import { getEvent } from "@/lib/event-catalog.mjs";
 import { createQrPayload, validatePurchaseInput } from "@/lib/ticket-domain.mjs";
 import { hasServerPurchaseConfig } from "@/lib/supabase/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -28,7 +28,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "ข้อมูลคำขอไม่ถูกต้อง กรุณาลองใหม่" }, { status: 400 });
   }
 
-  const validation = validatePurchaseInput(body.eventId, body.quantity, FEATURED_EVENT.id);
+  const selectedEvent = getEvent(body?.eventId);
+  if (!selectedEvent) {
+    return NextResponse.json({ error: "งานนี้ยังไม่เปิดจำหน่ายตั๋ว" }, { status: 400 });
+  }
+  const validation = validatePurchaseInput(body.eventId, body.quantity, selectedEvent.id);
   if (!validation.valid) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
@@ -42,12 +46,12 @@ export async function POST(request: Request) {
     .from("orders")
     .insert({
       user_id: user.id,
-      event_id: FEATURED_EVENT.id,
-      event_name: FEATURED_EVENT.name,
-      venue: FEATURED_EVENT.venue,
-      event_starts_at: FEATURED_EVENT.startsAt,
+      event_id: selectedEvent.id,
+      event_name: selectedEvent.name,
+      venue: selectedEvent.venue,
+      event_starts_at: selectedEvent.startsAt,
       status: "paid",
-      total_amount: FEATURED_EVENT.price * validation.quantity,
+      total_amount: selectedEvent.price * validation.quantity,
       created_at: now,
     })
     .select("id")
@@ -64,13 +68,13 @@ export async function POST(request: Request) {
       id,
       order_id: order.id,
       user_id: user.id,
-      event_id: FEATURED_EVENT.id,
-      event_name: FEATURED_EVENT.name,
-      venue: FEATURED_EVENT.venue,
-      event_starts_at: FEATURED_EVENT.startsAt,
+      event_id: selectedEvent.id,
+      event_name: selectedEvent.name,
+      venue: selectedEvent.venue,
+      event_starts_at: selectedEvent.startsAt,
       ticket_number: `FN-${id.slice(0, 6).toUpperCase()}`,
       holder_name: holderName,
-      qr_payload: createQrPayload(id, FEATURED_EVENT.id),
+      qr_payload: createQrPayload(id, selectedEvent.id),
       status: "valid",
       issued_at: now,
     };

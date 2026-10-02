@@ -6,6 +6,7 @@ import {
   DEMO_SESSION_KEY,
   DEMO_USER_ID,
   FEATURED_EVENT,
+  EVENTS,
   LAST_USER_KEY,
   SIMULATE_API_FAILURE_KEY,
   formatDate,
@@ -95,6 +96,7 @@ export default function TicketApp() {
   );
   const [notice, setNotice] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [selectedEvent, setSelectedEvent] = useState(FEATURED_EVENT);
   const [working, setWorking] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -305,6 +307,7 @@ export default function TicketApp() {
   }
 
   async function handlePurchase() {
+    if (working) return;
     if (!profile) {
       navigate("/login");
       return;
@@ -323,12 +326,12 @@ export default function TicketApp() {
     let serverConfirmed = false;
     try {
       if (isDemoSession()) {
-        await createDemoPurchase(quantity);
+        await createDemoPurchase(quantity, selectedEvent.id);
       } else {
         const response = await fetch("/api/purchase", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ eventId: FEATURED_EVENT.id, quantity }),
+          body: JSON.stringify({ eventId: selectedEvent.id, quantity }),
         });
         if (!response.ok) {
           const failure = await response.json().catch(() => null);
@@ -339,12 +342,12 @@ export default function TicketApp() {
         const createdOrder: CachedOrder = {
           id: result.order.id,
           userId: profile.id,
-          eventId: FEATURED_EVENT.id,
-          eventName: FEATURED_EVENT.name,
-          venue: FEATURED_EVENT.venue,
-          eventStartsAt: FEATURED_EVENT.startsAt,
+          eventId: selectedEvent.id,
+          eventName: selectedEvent.name,
+          venue: selectedEvent.venue,
+          eventStartsAt: selectedEvent.startsAt,
           status: "paid",
-          totalAmount: FEATURED_EVENT.price * quantity,
+          totalAmount: selectedEvent.price * quantity,
           createdAt: result.order.createdAt,
         };
         const createdTickets: CachedTicket[] = result.tickets.map((ticket: {
@@ -357,10 +360,10 @@ export default function TicketApp() {
           id: ticket.id,
           orderId: createdOrder.id,
           userId: profile.id,
-          eventId: FEATURED_EVENT.id,
-          eventName: FEATURED_EVENT.name,
-          venue: FEATURED_EVENT.venue,
-          eventStartsAt: FEATURED_EVENT.startsAt,
+          eventId: selectedEvent.id,
+          eventName: selectedEvent.name,
+          venue: selectedEvent.venue,
+          eventStartsAt: selectedEvent.startsAt,
           ticketNumber: ticket.ticket_number,
           holderName: ticket.holder_name,
           qrPayload: ticket.qr_payload,
@@ -491,31 +494,32 @@ export default function TicketApp() {
         {notice && <div className="notice-banner" role="status">{notice}</div>}
 
         {route === "home" && (
-          <div className="home-grid">
-            <section className="event-poster" aria-label="งานแนะนำ">
-              <div className="poster-topline"><span>FIELD NOTES ชวนคุณมา</span><span>ครั้งที่ 14</span></div>
+          <div className="home-content">
+          <div className="home-grid" id="event-selection">
+            <section className={`event-poster event-color-${EVENTS.findIndex((event) => event.id === selectedEvent.id)}`} aria-label={selectedEvent.name}>
+              <div className="poster-topline"><span>PWA TICKET ชวนคุณมา</span><span>งานตัวอย่าง</span></div>
               <div className="poster-art" aria-hidden="true"><span className="poster-orbit orbit-one" /><span className="poster-orbit orbit-two" /><span className="poster-sun" /></div>
               <div className="poster-copy">
-                <p>ดนตรีสดและเสวนา · กรุงเทพฯ</p>
-                <h2>Field<br />Notes<span>—</span></h2>
-                <div className="poster-footer"><span>14 พ.ย. 2569</span><span>คืนเดียวเท่านั้น</span></div>
+                <p>{selectedEvent.name.split(" — ")[1]}</p>
+                <h2 className="catalog-poster-title">{selectedEvent.name.split(" — ")[0]}<span>—</span></h2>
+                <div className="poster-footer"><span>{formatDate(selectedEvent.startsAt)}</span><span>{formatTime(selectedEvent.startsAt)} น.</span></div>
               </div>
-              <span className="poster-sticker">FN<br />สด</span>
+              <span className="poster-sticker"><Icon name="ticket" size={24} /></span>
             </section>
 
             <section className="event-details panel">
-              <div className="section-kicker"><span className="kicker-dot" /> งานแนะนำ</div>
-              <h2>{FEATURED_EVENT.name}</h2>
-              <p className="event-description">{FEATURED_EVENT.description}</p>
+              <div className="section-kicker"><span className="kicker-dot" /> งานที่เลือก</div>
+              <h2>{selectedEvent.name}</h2>
+              <p className="event-description">{selectedEvent.description}</p>
               <div className="event-facts">
-                <div><span className="fact-icon"><Icon name="calendar" size={17} /></span><span><strong>{formatDate(FEATURED_EVENT.startsAt, { weekday: "short", month: "long", day: "numeric" })}</strong><small>{formatTime(FEATURED_EVENT.startsAt)} น. · เปิดประตู</small></span></div>
-                <div><span className="fact-icon"><Icon name="pin" size={17} /></span><span><strong>{FEATURED_EVENT.venue}</strong><small>กรุงเทพมหานคร</small></span></div>
+                <div><span className="fact-icon"><Icon name="calendar" size={17} /></span><span><strong>{formatDate(selectedEvent.startsAt, { weekday: "short", month: "long", day: "numeric" })}</strong><small>{formatTime(selectedEvent.startsAt)} น. · เปิดประตู</small></span></div>
+                <div><span className="fact-icon"><Icon name="pin" size={17} /></span><span><strong>{selectedEvent.venue}</strong><small>กรุงเทพมหานคร</small></span></div>
               </div>
               <div className="purchase-row">
-                <div><span className="price-caption">บัตรเข้างานทั่วไป</span><strong className="price">{formatMoney(FEATURED_EVENT.price)}</strong><small>ต่อใบ</small></div>
+                <div><span className="price-caption">บัตรเข้างานทั่วไป</span><strong className="price">{formatMoney(selectedEvent.price)}</strong><small>ต่อใบ</small></div>
                 {profile ? (
                   <div className="purchase-controls">
-                    <label className="quantity-select"><span className="sr-only">จำนวนตั๋ว</span><select value={quantity} onChange={(event) => setQuantity(Number(event.target.value))}>{[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count} ใบ</option>)}</select></label>
+                    <label className="quantity-select"><span className="sr-only">จำนวนตั๋ว</span><select disabled={working} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))}>{[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count} ใบ</option>)}</select></label>
                     <button className="button button-primary" onClick={() => void handlePurchase()} disabled={working || !online}>
                       {working ? "กำลังจองตั๋ว…" : "ซื้อตั๋ว"}<Icon name="arrow" size={16} />
                     </button>
@@ -525,7 +529,29 @@ export default function TicketApp() {
                 )}
               </div>
             </section>
-
+          </div>
+          <section className="event-catalog" aria-labelledby="catalog-heading">
+            <div className="catalog-heading"><div><p className="eyebrow">เลือกประสบการณ์ถัดไป</p><h2 id="catalog-heading">งานทั้งหมด</h2></div><span className="saved-chip">{EVENTS.length} งาน</span></div>
+            <p className="muted-copy">งานตัวอย่างสำหรับทดลองจองตั๋ว เลือกงานเพื่อดูรายละเอียดและซื้อตั๋ว</p>
+            <div className="catalog-grid">
+              {EVENTS.map((event, index) => (
+                <article className={`catalog-card panel ${selectedEvent.id === event.id ? "catalog-card-selected" : ""}`} key={event.id}>
+                  <div className={`catalog-art event-color-${index}`} aria-hidden="true"><span>{String(index + 1).padStart(2, "0")}</span><strong>{event.name.split(" — ")[0]}</strong><Icon name="ticket" size={28} /></div>
+                  <div className="catalog-card-body">
+                    <h3>{event.name}</h3>
+                    <p><Icon name="calendar" size={15} /> {formatDate(event.startsAt)} · {formatTime(event.startsAt)} น.</p>
+                    <p><Icon name="pin" size={15} /> {event.venue}</p>
+                    <div className="catalog-card-actions"><strong>{formatMoney(event.price)} <small>/ ใบ</small></strong><button className="button button-secondary" aria-label={`เลือก ${event.name}`} aria-pressed={selectedEvent.id === event.id} disabled={working} onClick={() => {
+                      setSelectedEvent(event);
+                      setQuantity(1);
+                      setNotice("");
+                      document.getElementById("event-selection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}>{selectedEvent.id === event.id ? "เลือกแล้ว" : "เลือกงานนี้"}<Icon name="arrow" size={15} /></button></div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
           </div>
         )}
 
@@ -564,8 +590,8 @@ export default function TicketApp() {
             {!profile && <div className="empty-state panel"><div className="empty-icon"><Icon name="ticket" size={23} /></div><h2>เข้าสู่ระบบเพื่อดูตั๋ว</h2><p>พบตั๋วและรายละเอียดงานทั้งหมดของคุณได้ที่นี่</p><button className="button button-primary" onClick={() => navigate("/login")}>เข้าสู่ระบบ <Icon name="arrow" size={16} /></button></div>}
             {profile && tickets.length === 0 && <div className="empty-state panel"><div className="empty-icon"><Icon name="ticket" size={23} /></div><h2>ยังไม่มีตั๋ว</h2><p>ค้นหางานที่คุณชอบ แล้วซื้อตั๋วเพื่อร่วมสนุกไปด้วยกัน</p><button className="button button-primary" onClick={() => navigate("/")}>เลือกงาน <Icon name="arrow" size={16} /></button></div>}
             {tickets.map((ticket) => <button className="ticket-list-card" key={ticket.id} onClick={() => navigate(`/tickets/${ticket.id}`)}>
-              <span className="ticket-list-art"><span>FN</span><i /></span>
-              <span className="ticket-list-main"><span className="section-kicker">FIELD NOTES · {formatDate(ticket.eventStartsAt, { day: "numeric", month: "short", year: "numeric" })}</span><strong>{ticket.eventName}</strong><small>{isDemoSession() ? "ผู้เยี่ยมชม" : ticket.holderName} · {ticket.ticketNumber}</small></span>
+              <span className="ticket-list-art"><span>PW</span><i /></span>
+              <span className="ticket-list-main"><span className="section-kicker">{formatDate(ticket.eventStartsAt, { day: "numeric", month: "short", year: "numeric" })}</span><strong>{ticket.eventName}</strong><small>{isDemoSession() ? "ผู้เยี่ยมชม" : ticket.holderName} · {ticket.ticketNumber}</small></span>
               <span className="ticket-list-status"><span className="status-dot" />{statusLabel(ticket.status)}<span className="ticket-chevron"><Icon name="arrow" size={17} /></span></span>
             </button>)}
           </section>
@@ -584,7 +610,7 @@ export default function TicketApp() {
                 <div className="pass-perforation"><span /><i /><span /></div>
                 <div className="pass-qr-wrap"><div className="pass-qr"><QRCodeSVG value={ticketDetail.qrPayload} size={204} level="M" marginSize={2} title={`QR สำหรับตั๋ว ${ticketDetail.ticketNumber}`} /></div><span className="qr-caption">QR ประจำตั๋ว</span></div>
                 <div className="pass-fields"><div><span>ผู้ถือบัตร</span><strong>{isDemoSession() ? "ผู้เยี่ยมชม" : ticketDetail.holderName}</strong></div><div><span>วันและเวลา</span><strong>{formatDate(ticketDetail.eventStartsAt, { day: "numeric", month: "short" })} · {formatTime(ticketDetail.eventStartsAt)}</strong></div><div><span>เลขที่ตั๋ว</span><strong className="mono">{ticketDetail.ticketNumber}</strong></div></div>
-                <div className="pass-bottom"><span>FIELD NOTES / กรุงเทพฯ</span><span>ตั๋วอิเล็กทรอนิกส์</span></div>
+                <div className="pass-bottom"><span>PWA TICKET</span><span>ตั๋วอิเล็กทรอนิกส์</span></div>
               </article>
             </section>
           ) : (

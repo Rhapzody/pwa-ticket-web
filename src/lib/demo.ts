@@ -8,6 +8,7 @@ import {
 } from "@/lib/constants";
 import { getDatabase } from "@/lib/db";
 import { createQrPayload } from "@/lib/ticket-domain.mjs";
+import { getEvent } from "@/lib/event-catalog.mjs";
 import type { CachedOrder, CachedProfile, CachedTicket } from "@/lib/types";
 
 export function isDemoSession() {
@@ -64,7 +65,9 @@ export async function startDemoSession() {
   return profile;
 }
 
-export async function createDemoPurchase(quantity = 1) {
+export async function createDemoPurchase(quantity = 1, eventId = FEATURED_EVENT.id) {
+  const selectedEvent = getEvent(eventId);
+  if (!selectedEvent) throw new Error("งานนี้ยังไม่เปิดจำหน่ายตั๋ว");
   const db = getDatabase();
   const profile = await db.profiles.get(DEMO_USER_ID);
   if (!profile) throw new Error("กรุณาเริ่มโหมดทดลองก่อนสร้างตั๋ว");
@@ -74,12 +77,12 @@ export async function createDemoPurchase(quantity = 1) {
   const order: CachedOrder = {
     id: orderId,
     userId: DEMO_USER_ID,
-    eventId: FEATURED_EVENT.id,
-    eventName: FEATURED_EVENT.name,
-    venue: FEATURED_EVENT.venue,
-    eventStartsAt: FEATURED_EVENT.startsAt,
+    eventId: selectedEvent.id,
+    eventName: selectedEvent.name,
+    venue: selectedEvent.venue,
+    eventStartsAt: selectedEvent.startsAt,
     status: "paid",
-    totalAmount: FEATURED_EVENT.price * quantity,
+    totalAmount: selectedEvent.price * quantity,
     createdAt: now,
   };
   const tickets: CachedTicket[] = Array.from({ length: quantity }, () => {
@@ -88,13 +91,13 @@ export async function createDemoPurchase(quantity = 1) {
       id,
       orderId,
       userId: DEMO_USER_ID,
-      eventId: FEATURED_EVENT.id,
-      eventName: FEATURED_EVENT.name,
-      venue: FEATURED_EVENT.venue,
-      eventStartsAt: FEATURED_EVENT.startsAt,
+      eventId: selectedEvent.id,
+      eventName: selectedEvent.name,
+      venue: selectedEvent.venue,
+      eventStartsAt: selectedEvent.startsAt,
       ticketNumber: `FN-${id.slice(0, 6).toUpperCase()}`,
       holderName: profile.displayName,
-      qrPayload: createQrPayload(id, FEATURED_EVENT.id),
+      qrPayload: createQrPayload(id, selectedEvent.id),
       status: "valid",
       issuedAt: now,
     };

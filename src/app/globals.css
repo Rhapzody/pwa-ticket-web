@@ -67,6 +67,38 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .panel { border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: 0 4px 18px rgba(31,48,42,.025); }
 
 .home-grid { display: grid; grid-template-columns: minmax(0, 1.07fr) minmax(360px, .93fr); gap: 20px; align-items: stretch; }
+.home-content { display: grid; gap: 38px; }
+#event-selection { scroll-margin-top: 100px; }
+.catalog-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+.catalog-heading h2 { margin: 6px 0; font-size: 26px; }
+.catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 20px; }
+.catalog-card { overflow: hidden; }
+.catalog-card-selected { border-color: var(--forest); box-shadow: 0 0 0 1px var(--forest); }
+.catalog-art { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 155px; padding: 20px; color: #fffaf2; background: #344d43; overflow: hidden; }
+.catalog-art::after { content: ""; position: absolute; right: -25px; top: -45px; width: 160px; height: 160px; border: 1px solid currentColor; border-radius: 50%; opacity: .25; pointer-events: none; }
+.catalog-art > span { font-size: 12px; letter-spacing: .2em; opacity: .7; }
+.catalog-art > strong { position: relative; z-index: 1; max-width: 80%; font-family: Georgia, serif; font-size: 28px; font-weight: 400; line-height: 1.1; }
+.catalog-art > svg { position: absolute; bottom: 20px; right: 20px; opacity: .65; }
+.event-color-1, .event-poster.event-color-1 { background: #51414e; }
+.event-color-2, .event-poster.event-color-2 { background: #344d60; }
+.event-color-3, .event-poster.event-color-3 { background: #795442; }
+.event-color-4, .event-poster.event-color-4 { background: #8a6638; }
+.event-color-5, .event-poster.event-color-5 { background: #41634c; }
+.event-color-6, .event-poster.event-color-6 { background: #50547a; }
+.catalog-card-body { display: flex; flex-direction: column; gap: 10px; padding: 20px; min-height: 230px; }
+.catalog-card-body h3 { margin: 0 0 5px; font-size: 17px; line-height: 1.5; }
+.catalog-card-body p { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--muted); font-size: 12px; }
+.catalog-card-body p svg { flex-shrink: 0; }
+.catalog-card-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: auto; padding-top: 15px; }
+.catalog-card-actions > strong { font-size: 22px; }
+.catalog-card-actions small { font-size: 11px; color: var(--muted); font-weight: 400; }
+.poster-copy h2.catalog-poster-title { font-size: clamp(45px, 5vw, 76px); line-height: 1; letter-spacing: -.05em; max-width: 90%; }
+@media (max-width: 1040px) { .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .catalog-grid { grid-template-columns: 1fr; }
+  #event-selection { scroll-margin-top: 20px; }
+  .catalog-card-body { min-height: 220px; }
+}
 .event-poster { position: relative; min-height: 490px; overflow: hidden; border-radius: 19px; background: #344d43; color: #f6efe2; box-shadow: var(--shadow); }
 .poster-topline { position: absolute; z-index: 2; top: 22px; right: 23px; left: 23px; display: flex; justify-content: space-between; color: #cad4c9; font-size: 8px; font-weight: 800; letter-spacing: .17em; }
 .poster-art { position: absolute; inset: 0 0 0 31%; overflow: hidden; opacity: .95; }
